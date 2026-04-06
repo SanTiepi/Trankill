@@ -1,0 +1,14 @@
+{
+  "name": "trankill",
+  "version": "0.1.0",
+  "description": "Bouclier familial anti-arnaque — safe pause + cercle familial + détection IA",
+  "type": "module",
+  "scripts": {
+    "test": "node --test src/**/*.test.mjs test/**/*.test.mjs",
+    "dev": "node src/server.mjs",
+    "start": "node src/server.mjs"
+  },
+  "keywords": ["anti-scam", "family-protection", "safe-pause", "phishing", "fraud-detection"],
+  "author": "Trankill",
+  "license": "MIT"
+}
