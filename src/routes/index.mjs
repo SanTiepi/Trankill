@@ -2,6 +2,15 @@ import { readFile } from 'node:fs/promises';
 import { join, extname } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { scanInput } from '../services/scan_service.mjs';
+import {
+  createCircle,
+  getCircle,
+  addMember,
+  sendAlert,
+  listAlerts,
+  markAlertRead,
+  getCircleStats,
+} from '../services/circle_service.mjs';
 
 const __dirname = fileURLToPath(new URL('.', import.meta.url));
 const PUBLIC_DIR = join(__dirname, '..', 'public');
@@ -36,6 +45,88 @@ export async function router(req, res) {
     const body = await parseBody(req);
     const result = scanInput(body.input || body.url || body.message || '');
     return json(res, 200, result);
+  }
+
+  // POST /circle — Create family circle
+  if (path === '/circle' && method === 'POST') {
+    try {
+      const body = await parseBody(req);
+      const result = createCircle(body.ownerName);
+      return json(res, 201, result);
+    } catch (err) {
+      return json(res, 400, { error: err.message });
+    }
+  }
+
+  // GET /circle/:circleId — Get circle info
+  if (path.match(/^\/circle\/[a-f0-9]+$/) && method === 'GET') {
+    try {
+      const circleId = path.split('/')[2];
+      const result = getCircle(circleId);
+      return json(res, 200, result);
+    } catch (err) {
+      return json(res, 404, { error: err.message });
+    }
+  }
+
+  // POST /circle/:circleId/members — Add member to circle
+  if (path.match(/^\/circle\/[a-f0-9]+\/members$/) && method === 'POST') {
+    try {
+      const circleId = path.split('/')[2];
+      const body = await parseBody(req);
+      const result = addMember(circleId, body.inviteCode, body.memberName);
+      return json(res, 201, result);
+    } catch (err) {
+      return json(res, 400, { error: err.message });
+    }
+  }
+
+  // POST /circle/:circleId/alert — Send alert to circle
+  if (path.match(/^\/circle\/[a-f0-9]+\/alert$/) && method === 'POST') {
+    try {
+      const circleId = path.split('/')[2];
+      const body = await parseBody(req);
+      const result = sendAlert(circleId, body);
+      return json(res, 201, result);
+    } catch (err) {
+      return json(res, 400, { error: err.message });
+    }
+  }
+
+  // GET /circle/:circleId/alerts — List alerts for circle
+  if (path.match(/^\/circle\/[a-f0-9]+\/alerts$/) && method === 'GET') {
+    try {
+      const circleId = path.split('/')[2];
+      const limit = parseInt(url.searchParams.get('limit') || '50');
+      const result = listAlerts(circleId, limit);
+      return json(res, 200, { alerts: result });
+    } catch (err) {
+      return json(res, 404, { error: err.message });
+    }
+  }
+
+  // POST /circle/:circleId/alert/:alertId/read — Mark alert as read
+  if (path.match(/^\/circle\/[a-f0-9]+\/alert\/[a-f0-9]+\/read$/) && method === 'POST') {
+    try {
+      const parts = path.split('/');
+      const circleId = parts[2];
+      const alertId = parts[4];
+      markAlertRead(circleId, alertId);
+      return json(res, 200, { ok: true });
+    } catch (err) {
+      return json(res, 404, { error: err.message });
+    }
+  }
+
+  // GET /circle/:circleId/stats — Get circle statistics
+  if (path.match(/^\/circle\/[a-f0-9]+\/stats$/) && method === 'GET') {
+    try {
+      const circleId = path.split('/')[2];
+      const result = getCircleStats(circleId);
+      return json(res, 200, result);
+    } catch (err) {
+      return json(res, 404, { error: err.message });
+    }
   }
 
   // Static files
