@@ -1,7 +1,7 @@
 import { readFile } from 'node:fs/promises';
 import { join, extname } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { scanInput } from '../services/scan_service.mjs';
+import { scanInput, scanPhone } from '../services/scan_service.mjs';
 import {
   createCircle,
   getCircle,
@@ -43,7 +43,16 @@ export async function router(req, res) {
   // POST /scan — Analyse un lien/message
   if (path === '/scan' && method === 'POST') {
     const body = await parseBody(req);
-    const result = scanInput(body.input || body.url || body.message || '');
+    const input = body.input || body.url || body.message || '';
+    const verifiers = Array.isArray(body.verifiers) ? body.verifiers : [];
+    const result = scanInput(input, { verifiers });
+    return json(res, 200, result);
+  }
+
+  // POST /scan/phone — Analyse d'un numéro de téléphone suspect
+  if (path === '/scan/phone' && method === 'POST') {
+    const body = await parseBody(req);
+    const result = scanPhone(body.phone || body.number || '');
     return json(res, 200, result);
   }
 

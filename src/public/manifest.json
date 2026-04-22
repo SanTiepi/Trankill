@@ -1,0 +1,28 @@
+{
+  "name": "Trankill — Bouclier Familial Anti-Arnaque",
+  "short_name": "Trankill",
+  "description": "Sois tranquille, ta famille est protégée — détection d'arnaques en temps réel.",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "background_color": "#1a1a2e",
+  "theme_color": "#e94560",
+  "orientation": "portrait-primary",
+  "icons": [
+    {
+      "src": "data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 192 192'><rect fill='%231a1a2e' width='192' height='192'/><text x='96' y='120' font-size='120' text-anchor='middle' dominant-baseline='middle' font-family='Arial'>🛡️</text></svg>",
+      "sizes": "192x192",
+      "type": "image/svg+xml",
+      "purpose": "any"
+    }
+  ],
+  "categories": ["productivity", "lifestyle"],
+  "screenshots": [
+    {
+      "src": "data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 540 720'><rect fill='%231a1a2e' width='540' height='720'/><text x='270' y='100' font-size='36' text-anchor='middle' font-family='Arial' fill='white'>Trankill</text></svg>",
+      "sizes": "540x720",
+      "type": "image/svg+xml",
+      "form_factor": "narrow"
+    }
+  ]
+}
