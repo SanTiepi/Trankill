@@ -40,6 +40,10 @@ Aucune autre variable requise à ce stade.
    ```
 4. Vérifier : `curl https://trankill.batiscan.ch/health` → `{"ok":true,...}`.
 
+## Rollback
+
+Pas encore déployé → aucun rollback en prod à ce jour. Une fois déployé (cible VPS + Caddy ci-dessus), le rollback suivra le pattern du studio : sur le VPS, `git checkout <commit stable>` puis redéploiement (ou repointer l'image Docker précédente), vérif `curl /health`. **Données** : les cercles familiaux sont in-memory (perdus au redémarrage) tant que la persistance SQLite n'est pas faite — donc aucun état à préserver lors d'un rollback pour l'instant. Ça changera quand la persistance arrivera (penser alors à ne pas écraser la DB).
+
 ## À faire avant un premier déploiement public
 
 - [ ] Pause forcée (Safe Pause) implémentée.
