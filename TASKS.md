@@ -8,12 +8,12 @@
 
 ### Done
 TRK-001, TRK-002, TRK-003, TRK-013 (verdict doubt + patterns 2025 + FR/DE/IT + scan téléphone + contrôle-first frontend)
+TRK-005 (Safe Pause — livré 2026-06-10 : page /pause/:scanId + countdown SVG + unlock + notif cercle best-effort, 120 tests verts)
 
 ### Doing (Phase 0 — validation terrain, AUCUN code)
-TRK-014 (outreach : Pro Senectute / FRC / NCSC / Reddit)
+TRK-014 (outreach : pack prêt à envoyer — docs/outreach/SEND-THIS.md)
 
 ### Ready (Phase 1 — à coder quand Phase 0 a livré des retours)
-TRK-005 (Safe Pause — avancé depuis backlog)
 TRK-015 (consent-first circle redesign)
 TRK-016 (Web Share Target Android)
 
@@ -39,18 +39,33 @@ TRK-004, TRK-007, TRK-017, TRK-018, TRK-006, TRK-010, TRK-009, TRK-011, TRK-008,
 
 ---
 
+## TÂCHES — DONE (suite)
+
+### TRK-005 — Safe Pause (page de blocage temporaire)
+**Type :** feat | **Livré :** 2026-06-10 | **Tests :** 120 pass, 0 fail (99 existants + 21 nouveaux)
+**Ce qui a été livré :**
+- `pause_service.mjs` : store in-memory Map keyed sur scanId (même pattern circle_service), lookup scanId→verdict/explanation/contacts, `markCircleNotified()`, `_clearPauses()` pour teardown tests
+- Route `POST /pause` : crée la pause (rejecte safe/doubt avec 400), notifie le cercle en best-effort (erreur circle ignorée silencieusement), retourne scanId + tous les champs UI
+- Route `POST /pause/:scanId/unlock` : déverrouille manuellement, retourne `unlocked=true, isPauseOver=true`
+- `pause.html` : page standalone servie par fallback static, countdown SVG ring 5 min, auto-unlock à expiry, boutons "Demander à [proche]" + "Appeler [source officielle]" via `renderControlActions()` (répliqué depuis app.js), ton rassurant jamais anxiogène
+- Notif cercle : réutilise `sendAlert()` de circle_service, type `safe_pause` dans l'historique
+**Followups à faire (pas bloquants) :**
+- Intégration frontend app.js : après scan suspect/danger → POST /pause auto + redirect /pause/:scanId (TRK-005b)
+- Persistance cross-reload : store in-memory perd les pauses au restart (voir TRK-017 SQLite)
+- Push notification réelle cercle : pour l'instant stockée côté service mais pas SMS/email (TRK-006)
+
+---
+
 ## TÂCHES — DOING (Phase 0 terrain)
 
 ### TRK-014 — Validation terrain (outreach)
 **Type :** research | **Priorité :** P0 | **Coût :** 0 ligne de code
 **Objectif :** Avant de coder plus, parler à 10-20 humains réels pour valider que le concept `doubt + contrôle` résout un vrai problème.
 **Livrables :**
-- Envoyer [docs/outreach/pro_senectute.md](docs/outreach/pro_senectute.md) aux 5 antennes cantonales
-- Envoyer [docs/outreach/frc.md](docs/outreach/frc.md)
-- Envoyer [docs/outreach/ncsc.md](docs/outreach/ncsc.md)
-- Poster [docs/outreach/reddit_post.md](docs/outreach/reddit_post.md) sur r/Suisse et r/Switzerland samedi matin
-- Installer et tester Bitdefender Scamio sur WhatsApp avec 10 vrais messages d'arnaque suisses (benchmark)
-- Lire le rapport semestriel NCSC 2025/1 en entier + rapport anti-phishing 2024
+- [ ] Envoyer le pack [docs/outreach/SEND-THIS.md](docs/outreach/SEND-THIS.md) — emails vérifiés et bouclonnés (Pro Senectute 4 antennes, FRC via formulaire, NCSC incidents@ncsc.ch, Reddit r/Suisse + r/Switzerland)
+- [ ] Installer et tester Bitdefender Scamio sur WhatsApp avec 10 vrais messages d'arnaque suisses (benchmark)
+- [ ] Lire le rapport semestriel NCSC 2025/1 en entier + rapport anti-phishing 2024
+**Pack outreach :** `docs/outreach/SEND-THIS.md` — coordonnées vérifiées, canaux bouclonnés, prêt à envoyer.
 **Critère de sortie :** 10+ témoignages/réponses rassemblés dans `docs/testimonials.md`. Puis décision : coder Phase 1, pivoter, ou s'aligner sur un partenaire.
 
 ---
