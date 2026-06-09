@@ -11,6 +11,13 @@ import {
   markAlertRead,
   getCircleStats,
 } from '../services/circle_service.mjs';
+import {
+  createPause,
+  getPause,
+  markCircleNotified,
+  unlockPause,
+  isPauseOver,
+} from '../services/pause_service.mjs';
 
 const __dirname = fileURLToPath(new URL('.', import.meta.url));
 const PUBLIC_DIR = join(__dirname, '..', 'public');
@@ -133,6 +140,84 @@ export async function router(req, res) {
       const circleId = path.split('/')[2];
       const result = getCircleStats(circleId);
       return json(res, 200, result);
+    } catch (err) {
+      return json(res, 404, { error: err.message });
+    }
+  }
+
+  // POST /pause — Create a Safe Pause from a scan result (suspect or danger)
+  // Body: { scanResult, circleId?, memberId? }
+  if (path === '/pause' && method === 'POST') {
+    try {
+      const body = await parseBody(req);
+      if (!body.scanResult) return json(res, 400, { error: 'scanResult required' });
+      const entry = createPause(body.scanResult, {
+        circleId: body.circleId,
+        memberId: body.memberId,
+      });
+
+      // Notify circle in parallel (fire-and-forget, errors are non-fatal)
+      if (body.circleId && body.memberId) {
+        try {
+          sendAlert(body.circleId, {
+            memberId: body.memberId,
+            verdict: entry.verdict,
+            message: (entry.explanation && entry.explanation.fr) || '',
+            scannedUrl: entry.input_preview || '',
+            type: 'safe_pause',
+          });
+          markCircleNotified(entry.scanId);
+        } catch (_) {
+          // circle notification is best-effort
+        }
+      }
+
+      return json(res, 201, {
+        scanId: entry.scanId,
+        pauseUntil: entry.pauseUntil,
+        verdict: entry.verdict,
+        circleNotified: entry.circleNotified,
+      });
+    } catch (err) {
+      return json(res, 400, { error: err.message });
+    }
+  }
+
+  // GET /pause/:scanId — JSON state of a pause (used by the countdown page)
+  if (path.match(/^\/pause\/[a-f0-9]+$/) && method === 'GET') {
+    try {
+      const scanId = path.split('/')[2];
+      const entry = getPause(scanId);
+      return json(res, 200, {
+        scanId: entry.scanId,
+        verdict: entry.verdict,
+        score: entry.score,
+        input_preview: entry.input_preview,
+        explanation: entry.explanation,
+        official_contact: entry.official_contact,
+        suggested_verifiers: entry.suggested_verifiers,
+        scanned_at: entry.scanned_at,
+        pauseUntil: entry.pauseUntil,
+        circleNotified: entry.circleNotified,
+        unlocked: entry.unlocked,
+        over: isPauseOver(scanId),
+      });
+    } catch (err) {
+      return json(res, 404, { error: err.message });
+    }
+  }
+
+  // POST /pause/:scanId/unlock — Manual unlock after countdown (or before)
+  if (path.match(/^\/pause\/[a-f0-9]+\/unlock$/) && method === 'POST') {
+    try {
+      const scanId = path.split('/')[2];
+      const entry = unlockPause(scanId);
+      return json(res, 200, {
+        scanId: entry.scanId,
+        unlocked: entry.unlocked,
+        over: true,
+        message: 'Déverrouillé. Tu peux maintenant décider en connaissance de cause.',
+      });
     } catch (err) {
       return json(res, 404, { error: err.message });
     }

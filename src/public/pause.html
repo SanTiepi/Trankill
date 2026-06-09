@@ -1,0 +1,388 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Trankill — Pause de sécurité</title>
+  <link rel="stylesheet" href="/style.css">
+  <meta name="theme-color" content="#1a1a2e">
+  <style>
+    .pause-page {
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding: 1.5rem;
+      text-align: center;
+    }
+
+    .pause-shield {
+      font-size: 4rem;
+      margin-bottom: 1rem;
+    }
+
+    .pause-title {
+      font-size: 1.6rem;
+      font-weight: 700;
+      margin-bottom: 0.5rem;
+      color: var(--text-primary);
+    }
+
+    .pause-message {
+      font-size: 1.05rem;
+      color: var(--text-secondary);
+      max-width: 36ch;
+      line-height: 1.7;
+      margin: 0 auto 1.5rem;
+    }
+
+    .countdown-ring {
+      position: relative;
+      width: 140px;
+      height: 140px;
+      margin: 1.5rem auto;
+    }
+
+    .countdown-ring svg {
+      transform: rotate(-90deg);
+    }
+
+    .countdown-ring .bg {
+      stroke: var(--surface-alt);
+    }
+
+    .countdown-ring .progress {
+      stroke: var(--warning);
+      transition: stroke-dashoffset 1s linear;
+    }
+
+    .countdown-ring .danger-progress {
+      stroke: var(--danger);
+    }
+
+    .countdown-text {
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      font-size: 2rem;
+      font-weight: 700;
+      color: var(--text-primary);
+    }
+
+    .circle-notif {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.5rem;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 0.6rem 1rem;
+      font-size: 0.9rem;
+      color: var(--text-secondary);
+      margin-bottom: 1.5rem;
+    }
+
+    .circle-notif.notified {
+      border-color: var(--success);
+      color: var(--success);
+    }
+
+    .control-actions {
+      width: 100%;
+      max-width: 400px;
+      margin: 1rem auto;
+    }
+
+    .control-actions h4 {
+      font-size: 0.9rem;
+      color: var(--text-secondary);
+      margin-bottom: 0.75rem;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+    }
+
+    .control-buttons {
+      display: flex;
+      flex-direction: column;
+      gap: 0.6rem;
+    }
+
+    .control-btn {
+      display: block;
+      padding: 0.75rem 1.2rem;
+      border-radius: 8px;
+      border: none;
+      font-size: 1rem;
+      cursor: pointer;
+      text-decoration: none;
+      text-align: center;
+      transition: opacity 0.15s;
+    }
+
+    .control-btn:hover { opacity: 0.85; }
+
+    .control-btn.ask {
+      background: var(--surface-alt);
+      color: var(--text-primary);
+      border: 1px solid var(--border);
+    }
+
+    .control-btn.call-official {
+      background: var(--info);
+      color: #fff;
+    }
+
+    .control-btn.static {
+      background: var(--surface-alt);
+      color: var(--text-secondary);
+      cursor: default;
+      border: 1px solid var(--border);
+    }
+
+    .unlock-section {
+      margin-top: 2rem;
+      padding-top: 1.5rem;
+      border-top: 1px solid var(--border);
+      width: 100%;
+      max-width: 400px;
+    }
+
+    .unlock-note {
+      font-size: 0.85rem;
+      color: var(--text-secondary);
+      margin-bottom: 1rem;
+    }
+
+    .unlock-btn {
+      background: transparent;
+      border: 1px solid var(--border);
+      color: var(--text-secondary);
+      padding: 0.6rem 1.2rem;
+      border-radius: 8px;
+      cursor: pointer;
+      font-size: 0.9rem;
+      transition: border-color 0.15s, color 0.15s;
+    }
+
+    .unlock-btn:hover {
+      border-color: var(--text-secondary);
+      color: var(--text-primary);
+    }
+
+    .unlocked-banner {
+      background: var(--surface);
+      border: 1px solid var(--success);
+      border-radius: 8px;
+      padding: 1rem 1.5rem;
+      color: var(--success);
+      font-size: 1rem;
+      margin-top: 1rem;
+      display: none;
+    }
+
+    .verdict-badge {
+      display: inline-block;
+      padding: 0.3rem 0.8rem;
+      border-radius: 4px;
+      font-size: 0.8rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      margin-bottom: 1rem;
+    }
+
+    .verdict-badge.suspect { background: rgba(243,156,18,0.2); color: var(--warning); }
+    .verdict-badge.danger  { background: rgba(231,76,60,0.2);  color: var(--danger);  }
+
+    .error-state {
+      color: var(--text-secondary);
+      margin-top: 2rem;
+    }
+  </style>
+</head>
+<body>
+  <div class="pause-page" id="pausePage">
+    <div class="pause-shield" id="pauseShield">⏳</div>
+    <div id="pauseContent">
+      <p class="error-state">Chargement...</p>
+    </div>
+  </div>
+  <script>
+    // Extract scanId from URL — /pause/<scanId>
+    const scanId = location.pathname.split('/').filter(Boolean)[1];
+
+    let totalMs = 5 * 60 * 1000;
+    let remaining = totalMs;
+    let over = false;
+    let intervalId = null;
+    let entry = null;
+
+    const CIRCUMFERENCE = 2 * Math.PI * 54; // r=54
+
+    async function fetchPause() {
+      try {
+        const res = await fetch(`/pause/${scanId}`);
+        if (!res.ok) throw new Error('not_found');
+        entry = await res.json();
+        return entry;
+      } catch {
+        return null;
+      }
+    }
+
+    function formatTime(ms) {
+      const totalSec = Math.max(0, Math.ceil(ms / 1000));
+      const m = Math.floor(totalSec / 60);
+      const s = totalSec % 60;
+      return `${m}:${s.toString().padStart(2, '0')}`;
+    }
+
+    function renderControlActions(officialContact, verifiers, verdict) {
+      const blocks = [];
+
+      const firstVerifier = verifiers && verifiers.length ? verifiers[0] : null;
+      const verifierLabel = firstVerifier ? `Demander à ${firstVerifier.name}` : 'Demander à un proche de confiance';
+      const verifierAction = firstVerifier && firstVerifier.phone
+        ? `<a class="control-btn ask" href="tel:${firstVerifier.phone}">📞 ${verifierLabel}</a>`
+        : `<button class="control-btn ask" onclick="alert('Appelle un proche maintenant — montre-lui le message et demande son avis avant de cliquer.')">👨‍👩‍👧 ${verifierLabel}</button>`;
+      blocks.push(verifierAction);
+
+      if (officialContact && officialContact.name) {
+        const callLabel = `Appeler ${officialContact.name}`;
+        const callAction = officialContact.phone
+          ? `<a class="control-btn call-official" href="tel:${officialContact.phone.replace(/\s/g, '')}">☎️ ${callLabel} (${officialContact.phone})</a>`
+          : officialContact.url
+            ? `<a class="control-btn call-official" href="${officialContact.url}" target="_blank" rel="noopener">🌐 ${callLabel}</a>`
+            : `<div class="control-btn call-official static">☎️ ${callLabel}</div>`;
+        blocks.push(callAction);
+      }
+
+      return `
+        <div class="control-actions">
+          <h4>En attendant, vérifie :</h4>
+          <div class="control-buttons">${blocks.join('\n')}</div>
+        </div>
+      `;
+    }
+
+    function updateRing(remainingMs, totalMsRef, verdict) {
+      const ring = document.getElementById('progressRing');
+      if (!ring) return;
+      const fraction = Math.max(0, remainingMs / totalMsRef);
+      const offset = CIRCUMFERENCE * (1 - fraction);
+      ring.style.strokeDashoffset = offset;
+      if (verdict === 'danger') ring.classList.add('danger-progress');
+    }
+
+    function updateCountdownText(remainingMs) {
+      const el = document.getElementById('countdownText');
+      if (el) el.textContent = formatTime(remainingMs);
+    }
+
+    async function unlock() {
+      try {
+        const res = await fetch(`/pause/${scanId}/unlock`, { method: 'POST' });
+        if (res.ok) {
+          clearInterval(intervalId);
+          showUnlocked();
+        }
+      } catch (err) {
+        console.error('unlock failed', err);
+      }
+    }
+
+    function showUnlocked() {
+      over = true;
+      const banner = document.getElementById('unlockedBanner');
+      if (banner) banner.style.display = 'block';
+      const unlockBtn = document.getElementById('unlockBtn');
+      if (unlockBtn) unlockBtn.disabled = true;
+      const countdownText = document.getElementById('countdownText');
+      if (countdownText) countdownText.textContent = '✓';
+      const ring = document.getElementById('progressRing');
+      if (ring) { ring.style.strokeDashoffset = CIRCUMFERENCE; ring.style.stroke = 'var(--success)'; }
+      document.getElementById('pauseShield').textContent = '✅';
+    }
+
+    async function init() {
+      if (!scanId) {
+        document.getElementById('pauseContent').innerHTML = '<p class="error-state">Lien invalide.</p>';
+        return;
+      }
+
+      const data = await fetchPause();
+      if (!data) {
+        document.getElementById('pauseContent').innerHTML = '<p class="error-state">Cette pause n\'existe plus ou est introuvable.</p>';
+        return;
+      }
+
+      const { verdict, explanation, official_contact, suggested_verifiers, circleNotified, pauseUntil, unlocked: alreadyUnlocked } = data;
+      totalMs = Math.max(0, pauseUntil - Date.now());
+      remaining = totalMs;
+
+      if (alreadyUnlocked || totalMs <= 0) {
+        over = true;
+      }
+
+      const message = verdict === 'danger'
+        ? 'Ce site ressemble fortement à une arnaque connue. On a prévenu ta famille. Attends 5 min — si c\'est vraiment légitime, le lien marchera encore.'
+        : 'Ce site a des signaux suspects. Prends 5 min pour vérifier — si c\'est légitime, tu pourras cliquer après.';
+
+      const circleNotifHtml = circleNotified
+        ? `<div class="circle-notif notified">✓ Ta famille a été prévenue</div>`
+        : `<div class="circle-notif">Ton cercle sera prévenu si tu as configuré un cercle familial.</div>`;
+
+      const controlsHtml = renderControlActions(official_contact, suggested_verifiers, verdict);
+
+      document.getElementById('pauseShield').textContent = verdict === 'danger' ? '🛑' : '⚠️';
+      document.getElementById('pauseContent').innerHTML = `
+        <div class="verdict-badge ${verdict}">${verdict === 'danger' ? 'Danger' : 'Suspect'}</div>
+        <h1 class="pause-title">Pause de sécurité</h1>
+        <p class="pause-message">${message}</p>
+        ${circleNotifHtml}
+
+        <div class="countdown-ring" id="countdownRing" aria-label="Compte à rebours" role="timer">
+          <svg width="140" height="140" viewBox="0 0 140 140">
+            <circle class="bg" cx="70" cy="70" r="54" fill="none" stroke-width="10"/>
+            <circle id="progressRing" class="progress ${verdict === 'danger' ? 'danger-progress' : ''}"
+              cx="70" cy="70" r="54" fill="none" stroke-width="10"
+              stroke-dasharray="${CIRCUMFERENCE}"
+              stroke-dashoffset="0"
+              stroke-linecap="round"/>
+          </svg>
+          <div class="countdown-text" id="countdownText">${over ? '✓' : formatTime(remaining)}</div>
+        </div>
+
+        ${controlsHtml}
+
+        <div class="unlock-section">
+          <p class="unlock-note">Le lien n'est pas bloqué définitivement — tu peux toujours décider.</p>
+          <button id="unlockBtn" class="unlock-btn" onclick="unlock()" ${over ? 'disabled' : ''}>
+            ${over ? 'Déjà déverrouillé' : 'Je veux continuer quand même'}
+          </button>
+          <div id="unlockedBanner" class="unlocked-banner" ${over ? 'style="display:block"' : ''}>
+            ✓ Déverrouillé. Tu peux maintenant décider en connaissance de cause.
+          </div>
+        </div>
+      `;
+
+      if (!over) {
+        intervalId = setInterval(() => {
+          remaining = Math.max(0, pauseUntil - Date.now());
+          updateCountdownText(remaining);
+          updateRing(remaining, totalMs || CIRCUMFERENCE, verdict);
+          if (remaining <= 0) {
+            clearInterval(intervalId);
+            showUnlocked();
+          }
+        }, 1000);
+        updateRing(remaining, totalMs, verdict);
+      }
+    }
+
+    init();
+  </script>
+</body>
+</html>
