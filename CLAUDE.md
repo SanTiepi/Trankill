@@ -1,5 +1,7 @@
 # CLAUDE.md — Trankill
 
+> **Règles de travail universelles : `~/.claude/CLAUDE.md` (rulebook global) — il PRIME.** Ce fichier ne doit contenir que le spécifique à CE repo (stack, déploiement, conventions locales). En cas de doublon ou de conflit avec le global, le global gagne.
+
 ## Projet
 - Nom : Trankill
 - Tagline : "Sois tranquille, ta famille est protégée."
